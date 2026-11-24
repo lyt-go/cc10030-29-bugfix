@@ -77,5 +77,23 @@ npm run dev
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
 
+## 快照版本化与同版交付
+
+分析快照发布时（`GeoSnapshotService.create_snapshot`）会把当时的热力聚合、OD
+矩阵、区域聚合三份数据集**整份冻结**到 `data/snapshots/frozen/<快照号>/`，并写
+入 `manifest.json` 清单（含各数据集条数、区域明细可恢复范围与冻结文件位置）。
+此后同批聚合文件再被更正，也不会影响已发布快照。
+
+- 结果导出（`GeoExportService.export_batch_results`）与快照取数入口只按快照号
+  读取冻结副本，分片文件与导出汇总按快照号独立存放，重复交付不会串档，下载条数
+  始终等于快照登记条数，不会多于快照。
+- 区域明细按行标注粒度：带原网格字段（`grid_id`/`geohash` 等）为 `full_grid`，
+  可逐网格恢复全部明细行；只保留合计的旧快照为 `summary_only`，仅能恢复区域级
+  合计行。`GET /api/pipeline/snapshots/id/{快照号}/recovery` 可回查可恢复范围。
+- 外部作业按区域分片领取（`register_region_claim` / `resume_region_claim` /
+  `confirm_region_shard`）：领取按「快照号+作业+区域」幂等，中断续领只返回未确认
+  分片，已确认交付的行不会重复登记；分片带固化校验值，版本不一致的交付会被拒绝。
+  新快照产生的领取记录绑定新快照号，与旧记录独立对账。
+
 领域：数据工程
 子方向：数据分析与数据应用

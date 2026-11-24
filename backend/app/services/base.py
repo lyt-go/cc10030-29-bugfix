@@ -11,7 +11,10 @@ from typing import Any
 
 from app.store import store
 
-DATA_ROOT = Path(__file__).resolve().parent.parent.parent.parent / "data"
+DATA_ROOT = Path(os.environ.get(
+    "GEO_DATA_ROOT",
+    Path(__file__).resolve().parent.parent.parent.parent / "data",
+))
 
 
 def _ensure_dir(path: Path) -> None:
